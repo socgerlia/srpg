@@ -27,8 +27,9 @@ args = parse_argv()
 from excel_tool.type import *
 from excel_tool.index import *
 from excel_tool.constraint import *
-def get_meta_data(ws):
-	def meta_to_tuple(v):
+
+class MetaData:
+	def __metadecl_to_tuple(self, v):
 		if not v:
 			return ()
 		ret = eval(str(v))
@@ -36,77 +37,92 @@ def get_meta_data(ws):
 			return ret
 		else:
 			return (ret,)
-	def check_if_all_constraints(v, index):
+	def __check_if_all_constraints(self, seq):
 		ret = []
-		if index < len(v):
-			seq = v[index]
-			for item in seq:
-				if item["type"] == "constraint":
-					ret.append(item)
-				else:
-					raise
-		return ret
-	def transfrom_meta(v):
-		ret = { "type": v[0] if len(v) > 0 else int }
-		if ret["type"]["tag"] in ("multi_map", "map"): # TODO: unordered
-			ret["indice"] = []
-			ret["constraints"] = [check_if_all_constraints(v, 1), check_if_all_constraints(v, 2)]
-		else:
-			ret["indice"] = []
-			ret["constraints"] = []
-			for item in v[1:]:
-				if item["type"] == "index":
-					ret["indice"].append(item)
-				elif item["type"] == "constraint":
-					ret["constraints"].append(item)
-				else:
-					raise
-		return ret
-	def to_meta(name, v):
-		meta = None
-		if not v:
-			if name == "id":
-				meta = { "type": int, "indice": [unordered_unique], "constraints": [] }
+		for item in seq:
+			if item["type"] == "constraint":
+				ret.append(item)
 			else:
 				raise
-		else:
-			meta = transfrom_meta(meta_to_tuple(v))
-		return (name, meta)
+		return ret
 
+	def init_from_metadecl(self, name, metadecl):
+		self.name = name
+		if not metadecl:
+			if name == "id":
+				metadecl = "int, unordered_unique"
+			else:
+				raise
+		metatuple = self.__metadecl_to_tuple(metadecl)
+
+		self.type = metatuple[0]
+		if self.type["tag"] in ("multi_map", "map"): # TODO: unordered
+			self.indice = []
+			self.constraints = [
+				self.__check_if_all_constraints(at(metatuple, 1, [])),
+				self.__check_if_all_constraints(at(metatuple, 2, []))]
+		else:
+			self.indice = []
+			self.constraints = []
+			for item in metatuple[1:]:
+				if item["type"] == "index":
+					self.indice.append(item)
+				elif item["type"] == "constraint":
+					self.constraints.append(item)
+				else:
+					raise
+		return self
+	def init_from_dict(self, v):
+		self.name = v[0]
+		self.type = v[1]["type"]
+		self.indice = v[1]["indice"]
+		self.constraints = v[1]["constraints"]
+		return self
+
+	def to_dict(self):
+		return (self.name, {"type":self.type, "indice":self.indice, "constraints":self.constraints})
+	def __repr__(self):
+		return self.to_dict().__repr__()
+
+	def type_str(self):
+		def get_typename(t):
+			tag = t["tag"]
+			if tag == "vector":
+				return "vector<{0}>".format(get_typename(t["t"]))
+			elif tag == "multi_map":
+				return "multi_map<{0}, {1}>".format(get_typename(t["key"]), get_typename(t["value"]))
+			elif tag == "enum":
+				return get_typename(int)
+			else:
+				return tag
+		return get_typename(self.type)
+	def index_str(self, structname):
+		index = at(self.indice, 0)
+		if index:
+			return "{0}<member<{1}, {2}, &{1}::{3}>>".format(index["tag"], structname, self.type_str(), self.name)
+
+def get_meta_data(ws):
 	try:
 		rowIt = ws.rows
 		meta_row = rowIt.next()
 		name_row = rowIt.next()
-		return [ to_meta(name.value, meta_row[i].value) for i, name in enumerate(name_row) ]
+		return [ MetaData().init_from_metadecl(name.value, meta_row[i].value) for i, name in enumerate(name_row) ]
 	except StopIteration:
 		pass
 
 def dump_src_file(name, meta):
-	def get_type(t):
-		tag = t["tag"]
-		if tag == "vector":
-			return "vector<{0}>".format(get_type(t["t"]))
-		elif tag == "multi_map":
-			return "multi_map<{0}, {1}>".format(get_type(t["key"]), get_type(t["value"]))
-		elif tag == "enum":
-			return get_type(int)
-		else:
-			return tag
-	def get_index(typename, fieldname, t):
-		return "{0}<member<{1}, {2}, &{1}::{3}>>".format(t["tag"], name, typename, fieldname)
-
 	print "struct {0}{{".format(name)
 
 	# fields
 	for field in meta:
-		print "  {0} {1};".format(get_type(field[1]["type"]), field[0])
+		print "  {0} {1};".format(field.type_str(), field.name)
 	print
 
 	# serialize
 	print "  template<class Archive>"
 	print "  void serialize(Archive& ar, const unsigned int version){"
 	for field in meta:
-		print "    ar & {0};".format(field[0])
+		print "    ar & {0};".format(field.name)
 	print "  }"
 	print
 
@@ -115,9 +131,9 @@ def dump_src_file(name, meta):
 	print "    {0},".format(name)
 	print "    indexed_by<"
 	for field in meta:
-		index = at(field[1]["indice"], 0)
-		if index:
-			print "      {0},".format(get_index(get_type(field[1]["type"]), field[0], index))
+		s = field.index_str(name)
+		if s:
+			print "      {0},".format(s)
 	print "    >"
 	print "  > map_type;"
 
@@ -147,6 +163,7 @@ elif verb == 'meta':
 
 		wb = openpyxl.load_workbook(path, read_only=True)
 		ws = wb.active
-		pp.pprint(get_meta_data(ws))
+		meta = get_meta_data(ws)
+		pp.pprint([v.to_dict() for v in meta])
 	f(args.path)
 
