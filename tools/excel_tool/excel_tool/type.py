@@ -1,3 +1,5 @@
+import copy
+
 class Type:
 	def __init__(self):
 		self.constraints = []
@@ -9,30 +11,57 @@ class Type:
 		ret.has_set_constraints = True
 		ret.constraints = args
 		return ret
-class Int(Type):
-	@property def name(self): return "int"
-class String(Type):
-	@property def name(self): return "string"
 
-def _tuple_name(templatename, t):
-	return "{0}<{1}>".format(templatename, ",".join(t.types.name))
+class Bool(Type):
+	@property
+	def name(self): return "bool"
+class Int(Type):
+	@property
+	def name(self): return "int"
+class Float(Type):
+	@property
+	def name(self): return "float"
+
+class Enum(Type):
+	@property
+	def name(self): return self.enumname
+
+class String(Type):
+	@property
+	def name(self): return "flyweight<string>"
+class Text(Type):
+	@property
+	def name(self): return "string"
+
+def _tuple_name(templatename, tu):
+	return "{0}<{1}>".format(templatename, ", ".join(t.name for t in tu.types))
 
 class Tuple(Type):
-	@property def name(self): return _tuple_name("tuple", self)
+	@property
+	def name(self): return _tuple_name("tuple", self)
 class Vector(Tuple):
-	@property def name(self): return _tuple_name("vector", self)
+	@property
+	def name(self): return _tuple_name("vector", self)
 
 class Map(Tuple):
-	@property def name(self): return _tuple_name("map", self)
+	@property
+	def name(self): return _tuple_name("map", self)
 class UnorderedMap(Tuple):
-	@property def name(self): return _tuple_name("unordered_map", self)
+	@property
+	def name(self): return _tuple_name("unordered_map", self)
 class MultiMap(Tuple):
-	@property def name(self): return _tuple_name("multi_map", self)
+	@property
+	def name(self): return _tuple_name("multi_map", self)
 class UnorderedMultiMap(Tuple):
-	@property def name(self): return _tuple_name("unordered_multi_map", self)
+	@property
+	def name(self): return _tuple_name("unordered_multi_map", self)
 
+def _make_enum(enumname):
+	ret = Enum()
+	ret.enumname = enumname
+	return ret
 def _make_tuple(*types):
-	assert len(types) == 0
+	assert len(types) > 0
 	ret = Tuple()
 	ret.types = types
 	return ret
@@ -48,8 +77,13 @@ class _MapMaker:
 		ret.types = [k, v]
 		return ret
 
+bool = Bool()
 int = Int()
+float = Float()
+enum = _make_enum
+
 string = String()
+text = Text()
 
 tu = _make_tuple
 vector = _make_vector
@@ -58,21 +92,3 @@ map = _MapMaker(Map)
 unordered_map = _MapMaker(UnorderedMap)
 multi_map = _MapMaker(MultiMap)
 unordered_multi_map = _MapMaker(UnorderedMultiMap)
-
-# def _meta(tag, **args):
-# 	return dict(args, tag = tag, type = "type")
-
-# int = _meta("int")
-# string = _meta("string")
-
-# def vector(t):
-# 	return _meta("vector", t = t)
-
-# def multi_map(k, v):
-# 	return _meta("multi_map", key = k, value = v)
-
-# def enum(name):
-# 	return _meta("enum", name = name)
-
-# def tu(*types):
-# 	return _meta("tu", types = types)

@@ -1,5 +1,7 @@
 def at(seq, i, default=None):
 	return seq[i] if i < len(seq) else default
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
 
 import argparse
 def parse_argv():
@@ -43,8 +45,8 @@ def dump_src_file(name, meta):
 struct {struct_name}{{
   {field_decls}
 
-  template<class Archive>"
-  void serialize(Archive& ar, const unsigned int version){{"
+  template<class Archive>
+  void serialize(Archive& ar, const unsigned int version){{
     {serialize_exprs}
   }}
 
@@ -69,11 +71,11 @@ struct {struct_name}{{
 
 	def index_str(index, field):
 		return "{0}<tag<i_{1}>, member<{2}, {3}, &{2}::{1}>>".format(index["tag"], field.name, struct_name, field.type.name)
-	indice = [(index, field) for field in fields for index in field.indice]
+	indice = [(index, field) for field in meta for index in field.indice]
 	index_tags = "\n  ".join("struct i_{0}{{}};".format(field.name) for index, field in indice)
 	index_decls = ",\n      ".join(index_str(index, field) for index, field in indice)
 
-	print tpl.format(locals())
+	print tpl.format(**locals())
 
 import openpyxl
 verb = args.verb
@@ -94,9 +96,6 @@ elif verb == 'transform':
 	f(args.files[0])
 elif verb == 'meta':
 	def f(path):
-		import pprint
-		pp = pprint.PrettyPrinter(indent=2)
-
 		wb = openpyxl.load_workbook(path, read_only=True)
 		ws = wb.active
 		meta = get_meta_data(ws)
