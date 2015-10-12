@@ -27,79 +27,7 @@ args = parse_argv()
 from excel_tool.type import *
 from excel_tool.index import *
 from excel_tool.constraint import *
-
-class MetaData:
-	def __metadecl_to_tuple(self, v):
-		if not v:
-			return ()
-		ret = eval(str(v))
-		if type(ret) is tuple:
-			return ret
-		else:
-			return (ret,)
-	def __check_if_all_constraints(self, seq):
-		ret = []
-		for item in seq:
-			if item["type"] == "constraint":
-				ret.append(item)
-			else:
-				raise
-		return ret
-
-	def init_from_metadecl(self, name, metadecl):
-		self.name = name
-		if not metadecl:
-			if name == "id":
-				metadecl = "int, unordered_unique"
-			else:
-				raise
-		metatuple = self.__metadecl_to_tuple(metadecl)
-
-		self.type = metatuple[0]
-		if self.type["tag"] in ("multi_map", "map"): # TODO: unordered
-			self.indice = []
-			self.constraints = [
-				self.__check_if_all_constraints(at(metatuple, 1, [])),
-				self.__check_if_all_constraints(at(metatuple, 2, []))]
-		else:
-			self.indice = []
-			self.constraints = []
-			for item in metatuple[1:]:
-				if item["type"] == "index":
-					self.indice.append(item)
-				elif item["type"] == "constraint":
-					self.constraints.append(item)
-				else:
-					raise
-		return self
-	def init_from_dict(self, v):
-		self.name = v[0]
-		self.type = v[1]["type"]
-		self.indice = v[1]["indice"]
-		self.constraints = v[1]["constraints"]
-		return self
-
-	def to_dict(self):
-		return (self.name, {"type":self.type, "indice":self.indice, "constraints":self.constraints})
-	def __repr__(self):
-		return self.to_dict().__repr__()
-
-	def type_str(self):
-		def get_typename(t):
-			tag = t["tag"]
-			if tag == "vector":
-				return "vector<{0}>".format(get_typename(t["t"]))
-			elif tag == "multi_map":
-				return "multi_map<{0}, {1}>".format(get_typename(t["key"]), get_typename(t["value"]))
-			elif tag == "enum":
-				return get_typename(int)
-			else:
-				return tag
-		return get_typename(self.type)
-	def index_str(self, structname):
-		index = at(self.indice, 0)
-		if index:
-			return "{0}<member<{1}, {2}, &{1}::{3}>>".format(index["tag"], structname, self.type_str(), self.name)
+from excel_tool.metadata import MetaData
 
 def get_meta_data(ws):
 	try:
@@ -111,33 +39,41 @@ def get_meta_data(ws):
 		pass
 
 def dump_src_file(name, meta):
-	print "struct {0}{{".format(name)
+	tpl = """
+struct {struct_name}{{
+  {field_decls}
 
-	# fields
-	for field in meta:
-		print "  {0} {1};".format(field.type_str(), field.name)
-	print
+  template<class Archive>"
+  void serialize(Archive& ar, const unsigned int version){{"
+    {serialize_exprs}
+  }}
 
-	# serialize
-	print "  template<class Archive>"
-	print "  void serialize(Archive& ar, const unsigned int version){"
-	for field in meta:
-		print "    ar & {0};".format(field.name)
-	print "  }"
-	print
+  {index_tags}
+  typedef multi_index_container<
+    {struct_name},
+    indexed_by<
+      {index_decls}
+    >
+  > map_type;
 
-	# typedef map_type
-	print "  typedef multi_index_container<"
-	print "    {0},".format(name)
-	print "    indexed_by<"
-	for field in meta:
-		s = field.index_str(name)
-		if s:
-			print "      {0},".format(s)
-	print "    >"
-	print "  > map_type;"
+  template<class Tag> static auto get(){{ return data.get<Tag>(); }}
+  static auto get(){{ return data.get<0>(); }}
 
-	print "};"
+  map_type data;
+  static const char name[] = "{struct_name}";
+}};
+"""
+	struct_name = name
+	field_decls = "\n  ".join("{0} {1};".format(field.type.name, field.name) for field in meta)
+	serialize_exprs = "\n    ".join("ar & {0};".format(field.name) for field in meta)
+
+	def index_str(index, field):
+		return "{0}<tag<i_{1}>, member<{2}, {3}, &{2}::{1}>>".format(index["tag"], field.name, struct_name, field.type.name)
+	indice = [(index, field) for field in fields for index in field.indice]
+	index_tags = "\n  ".join("struct i_{0}{{}};".format(field.name) for index, field in indice)
+	index_decls = ",\n      ".join(index_str(index, field) for index, field in indice)
+
+	print tpl.format(locals())
 
 import openpyxl
 verb = args.verb

@@ -9,5 +9,5 @@ struct tpl_card{
 	int max_hp;
 	int min_mp;
 	int max_mp;
-	vector<skill> skills;
+	vector<int> skills;
 };
