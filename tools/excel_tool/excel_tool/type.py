@@ -2,14 +2,16 @@ import copy
 
 class Type:
 	def __init__(self):
-		self.constraints = []
-		self.has_set_constraints = False
+		self.props = []
 	def __call__(self, *args):
-		if self.has_set_constraints:
-			raise
+		if len(args) == 0:
+			return self
 		ret = copy.deepcopy(self)
-		ret.has_set_constraints = True
-		ret.constraints = args
+		ret.props += args
+		return ret
+	def __div__(self, prop):
+		ret = copy.deepcopy(self)
+		ret.props.append(prop)
 		return ret
 
 class Bool(Type):
@@ -28,10 +30,10 @@ class Enum(Type):
 
 class String(Type):
 	@property
-	def name(self): return "flyweight<string>"
-class Text(Type):
-	@property
 	def name(self): return "string"
+class ShortString(Type):
+	@property
+	def name(self): return "flyweight<string>"
 
 def _tuple_name(templatename, tu):
 	return "{0}<{1}>".format(templatename, ", ".join(t.name for t in tu.types))
@@ -83,7 +85,7 @@ float = Float()
 enum = _make_enum
 
 string = String()
-text = Text()
+ss = ShortString()
 
 tu = _make_tuple
 vector = _make_vector
@@ -92,3 +94,11 @@ map = _MapMaker(Map)
 unordered_map = _MapMaker(UnorderedMap)
 multi_map = _MapMaker(MultiMap)
 unordered_multi_map = _MapMaker(UnorderedMultiMap)
+
+class Struct(Type):
+	def __init__(self, name, *fields):
+		self.name = name
+		self.fields = fields
+
+def struct(name, *fields):
+	return Struct(name, *fields)
