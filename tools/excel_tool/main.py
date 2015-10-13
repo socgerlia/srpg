@@ -31,6 +31,24 @@ from excel_tool.index import *
 from excel_tool.constraint import *
 from excel_tool.metadata import MetaData
 
+
+def get_struct(rootname, ws):
+	def __metadecl_to_list(v):
+		if not v:
+			return []
+		ret = eval(str(v))
+		if type(ret) is tuple:
+			return list(ret)
+		else:
+			return [ret]
+	try:
+		rowIt = ws.rows
+		meta_row = rowIt.next()
+		name_row = rowIt.next()
+		return struct(rootname, *[list(name.value, *__metadecl_to_list(meta_row[i].value)) for i, name in enumerate(name_row)])
+	except StopIteration:
+		pass
+
 def get_meta_data(ws):
 	try:
 		rowIt = ws.rows

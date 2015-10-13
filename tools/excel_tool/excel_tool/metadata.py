@@ -2,6 +2,9 @@ from type import *
 from index import *
 from constraint import *
 
+class TplData(Struct):
+	
+
 class MetaData:
 	def __metadecl_to_tuple(self, v):
 		if not v:
