@@ -15,6 +15,7 @@ struct basic_attr{
 	int step;
 	int stepu;
 	int stepd;
+	int jump;
 	int wt;
 };
 
@@ -25,6 +26,7 @@ struct tpl_unit{
 	int gender;
 	int career;
 	int moments;
+	int gene_id;
 
 	basic_attr attr;
 	int grow_id;

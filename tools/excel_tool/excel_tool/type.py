@@ -11,6 +11,15 @@ class Type(Meta):
 		return Optional(self)
 	def __pos__(self):
 		return Vector(self)
+	def __repr__(self):
+		return self.base_repr() + self.props_repr()
+	def base_repr(self):
+		return self.__class__.__name__ + "()"
+	def props_repr(self):
+		if len(self.props) == 0:
+			return ""
+		else:
+			return "({0})".format(", ".join(prop.__repr__() for prop in self.props))
 	# def __invert__(self):
 	# 	return ?
 
@@ -28,6 +37,8 @@ class Enum(Type):
 	def __init__(self, enumname):
 		Type.__init__(self)
 		self.enumname = enumname
+	def base_repr(self):
+		return "Enum({0})".format(self.enumname.__repr__())
 	@property
 	def name(self): return self.enumname
 
@@ -43,6 +54,8 @@ class Template(Type):
 		Type.__init__(self)
 		self.templatename = templatename
 		self.types = types
+	def base_repr(self):
+		return "{0}({1})".format(self.__class__.__name__, ", ".join(t.__repr__() for t in self.types))
 	@property
 	def name(self):
 		return "{0}<{1}>".format(self.templatename, ", ".join(t.name for t in self.types))
@@ -93,6 +106,9 @@ class Field:
 		self.name = name
 		self.type = type
 		self.props = props
+	def to_list_repr(self):
+		lst = [self.name, self.type] + self.props
+		return lst.__repr__()
 	def get_props(self, pred=None):
 		if not pred:
 			return self.type.props
@@ -103,21 +119,21 @@ class Field:
 	def get_self_prop_pairs(self, pred=None):
 		return [(self, prop) for prop in self.get_props(pred)]
 
-def dm(name, type, *args):
-	print args
-import sys
 class Struct(Type):
 	def __init__(self, name, *fields):
 		self.name = name
 		self.fields = [Field(*v) for v in fields]
-	# def __repr__(self):
-	# 	return "Struct({0}, {1})".format(self.name, ", ".join(field.__repr__() for field in fields))
+	def __repr__(self):
+		args = [self.name.__repr__()] + [field.to_list_repr() for field in fields]
+		return "Struct({0})".format(", ".join(args))
 
-	def indent(self, n, prefix="", suffix=""):
-		return prefix + " ".repeat(n) + suffix
+	# def indent(self, n, prefix="", suffix=""):
+	# 	return prefix + " ".repeat(n) + suffix
 	def field_decls(self):
 		return "\n  ".join("{0} {1};".format(field.type.name, field.name) for field in self.fields)
 	def serialize_exprs(self):
+		if len(self.fields) == 0:
+			return ""
 		return "ar & " + " & ".join(field.name for field in self.fields) + ";"
 
 class Dumper:

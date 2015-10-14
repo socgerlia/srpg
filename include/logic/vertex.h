@@ -17,7 +17,7 @@ protected:
 	int bottom;
 	index_type index;
 	vertex* adjs[6];
-	vector<unit*> units;
+	list<entity*> entities_;
 
 // public:1
 // 	vertex();

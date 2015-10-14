@@ -1,8 +1,8 @@
 #pragma once
 
-struct unit{
+struct unit_data{
 	int id;
-	tpl_unit& tpl_unit_;
+	int unit_id;
 
 	int level;
 	int exp;

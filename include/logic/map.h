@@ -29,7 +29,7 @@ public:
 	data_type& get_data(){ return data_; }
 
 	// modify
-	vertex_type& add_vertex(const index_type& index, const T& value);
+	vertex_type& add_vertex(const index_type& index, const vertex_type& value);
 	void erase_vertex(size_t uid){}
 	void swap_vertex(size_t uid_a, size_t uid_b){}
 };

@@ -9,5 +9,7 @@ struct tpl_card{
 	int max_hp;
 	int min_mp;
 	int max_mp;
+	int gene_id;
+
 	vector<int> skills;
 };

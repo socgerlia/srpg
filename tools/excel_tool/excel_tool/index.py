@@ -6,3 +6,5 @@ class Index:
 
 unordered_unique = Index("unordered_unique")
 ordered_unique = Index("ordered_unique")
+unordered_non_unique = Index("unordered_non_unique")
+ordered_non_unique = Index("ordered_non_unique")
