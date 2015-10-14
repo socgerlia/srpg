@@ -4,11 +4,11 @@ class Meta:
 	def __init__(self):
 		self.props = []
 		self.readonly = False
-	def __call__(self, prop):
+	def __call__(self, *props):
 		return self.add_props(*props)
 	def __div__(self, prop):
 		return self.add_props(prop)
-	def __set_readonly(self):
+	def set_readonly(self):
 		self.readonly = True
 		return self
 	def add_props(self, *props):

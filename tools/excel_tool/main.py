@@ -29,71 +29,72 @@ args = parse_argv()
 from excel_tool.type import *
 from excel_tool.index import *
 from excel_tool.constraint import *
-from excel_tool.metadata import MetaData
-
 
 def get_struct(rootname, ws):
-	def __metadecl_to_list(v):
-		if not v:
-			return []
-		ret = eval(str(v))
+	def __metadecl_to_list(name, decl):
+		if not decl:
+			if name == "id":
+				decl = "int/unordered_unique"
+			else:
+				assert False
+		ret = eval(str(decl))
 		if type(ret) is tuple:
-			return list(ret)
+			return [name] + list(ret)
 		else:
-			return [ret]
+			return [name, ret]
 	try:
 		rowIt = ws.rows
 		meta_row = rowIt.next()
 		name_row = rowIt.next()
-		return struct(rootname, *[list(name.value, *__metadecl_to_list(meta_row[i].value)) for i, name in enumerate(name_row)])
+		return struct(rootname, *[__metadecl_to_list(name.value, meta_row[i].value) for i, name in enumerate(name_row)])
 	except StopIteration:
 		pass
 
-def get_meta_data(ws):
-	try:
-		rowIt = ws.rows
-		meta_row = rowIt.next()
-		name_row = rowIt.next()
-		return [ MetaData().init_from_metadecl(name.value, meta_row[i].value) for i, name in enumerate(name_row) ]
-	except StopIteration:
-		pass
+# def get_meta_data(ws):
+# 	try:
+# 		rowIt = ws.rows
+# 		meta_row = rowIt.next()
+# 		name_row = rowIt.next()
+# 		return [ MetaData().init_from_metadecl(name.value, meta_row[i].value) for i, name in enumerate(name_row) ]
+# 	except StopIteration:
+# 		pass
 
-def dump_src_file(name, meta):
-	tpl = """
-struct {struct_name}{{
-  {field_decls}
+# def dump_src_file(name, meta):
+# 	tpl = """
+# struct {struct_name}{{
+#   {field_decls}
 
-  template<class Archive>
-  void serialize(Archive& ar, const unsigned int version){{
-    {serialize_exprs}
-  }}
+#   template<class Archive>
+#   void serialize(Archive& ar, const unsigned int version){{
+#     {serialize_exprs}
+#   }}
 
-  {index_tags}
-  typedef multi_index_container<
-    {struct_name},
-    indexed_by<
-      {index_decls}
-    >
-  > map_type;
+#   {index_tags}
+#   typedef multi_index_container<
+#     {struct_name},
+#     indexed_by<
+#       {index_decls}
+#     >
+#   > map_type;
 
-  template<class Tag> static auto get(){{ return data.get<Tag>(); }}
-  static auto get(){{ return data.get<0>(); }}
+#   template<class Tag> static auto get(){{ return data.get<Tag>(); }}
+#   static auto get(){{ return data.get<0>(); }}
 
-  map_type data;
-  static const char name[] = "{struct_name}";
-}};
-"""
-	struct_name = name
-	field_decls = "\n  ".join("{0} {1};".format(field.type.name, field.name) for field in meta)
-	serialize_exprs = "\n    ".join("ar & {0};".format(field.name) for field in meta)
+#   map_type data;
+#   static const char name[] = "{struct_name}";
+# }};
+# """
+# 	struct_name = name
+# 	field_decls = "\n  ".join("{0} {1};".format(field.type.name, field.name) for field in meta)
+# 	serialize_exprs = "\n    ".join("ar & {0};".format(field.name) for field in meta)
 
-	def index_str(index, field):
-		return "{0}<tag<i_{1}>, member<{2}, {3}, &{2}::{1}>>".format(index["tag"], field.name, struct_name, field.type.name)
-	indice = [(index, field) for field in meta for index in field.indice]
-	index_tags = "\n  ".join("struct i_{0}{{}};".format(field.name) for index, field in indice)
-	index_decls = ",\n      ".join(index_str(index, field) for index, field in indice)
+# 	def index_str(index, field):
+# 		return "{0}<tag<i_{1}>, member<{2}, {3}, &{2}::{1}>>".format(index["tag"], field.name, struct_name, field.type.name)
+# 	indice = [(index, field) for field in meta for index in field.indice]
+# 	index_tags = "\n  ".join("struct i_{0}{{}};".format(field.name) for index, field in indice)
+# 	index_decls = ",\n      ".join(index_str(index, field) for index, field in indice)
 
-	print tpl.format(**locals())
+# 	print tpl.format(**locals())
 
 import openpyxl
 verb = args.verb
@@ -109,14 +110,19 @@ elif verb == 'transform':
 
 		wb = openpyxl.load_workbook(path, read_only=True)
 		ws = wb.active
-		meta = get_meta_data(ws)
-		dump_src_file(rootname, meta)
+		stu = get_struct(rootname, ws)
+		with open(path + ".hpp", "w") as fl:
+			Dumper(stu, fl).dump_tpl()
 	f(args.files[0])
 elif verb == 'meta':
 	def f(path):
+		from os.path import splitext, basename
+		(rootname, ext) = splitext(basename(path))
+
 		wb = openpyxl.load_workbook(path, read_only=True)
 		ws = wb.active
-		meta = get_meta_data(ws)
-		pp.pprint([v.to_dict() for v in meta])
+		stu = get_struct(rootname, ws)
+		return stu
+		# pp.pprint([v.to_dict() for v in meta])
 	f(args.path)
 

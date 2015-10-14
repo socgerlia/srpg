@@ -1,6 +1,9 @@
-def _meta(tag, **args):
-	return dict(args, tag = tag, type = "constraint")
+class Constraint:
+	pass
+	# def __init__(self, name):
+	# 	self.name = name
 
-def extern(file, fieldname="id"):
-	return _meta("extern", file = file, fieldname = fieldname)
-
+class extern:
+	def __init__(self, file, fieldname="id"):
+		self.file = file
+		self.fieldname = fieldname
