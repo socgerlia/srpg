@@ -53,4 +53,8 @@ struct game_table{
 				});
 		}
 	}
+
+	void move_to(entity* en, const vector<int>& path){
+		
+	}
 };
