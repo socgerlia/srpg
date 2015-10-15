@@ -21,6 +21,15 @@ struct game_table{
 		>
 	> entity_set;
 
+	template<class Filter, class Comp>
+	void filter_sort_entities(vector<entity*>& container, Filter&& filter, Comp&& comp){
+		container.clear();
+		for(auto& p : entities_)
+			if(filter(p))
+				container.push_back(p.get());
+		sort(container.begin(), container.end(), comp);
+	}
+
 	time_bar time_;
 	history history_;
 
@@ -28,4 +37,20 @@ struct game_table{
 
 	void add_entity(entity* en);
 	void remove_entity(entity* en);
+
+	bool dirty;
+	vector<entity*> entities_by_next_turn;
+	const vector<entity*>& get_entities_by_next_turn(){
+		if(dirty){
+			dirty = false;
+			filter_sort_entities(
+				entities_by_next_turn,
+				[](auto& p) -> bool{ return p->next_turn > 0; },
+				[](auto a, auto b) -> bool{
+					int d;
+					return (d = a.next_turn - b.next_turn) != 0 ? d < 0 :
+						a.next_turn_eps - b.next_turn_eps < 0;
+				});
+		}
+	}
 };
