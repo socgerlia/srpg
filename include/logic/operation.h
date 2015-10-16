@@ -7,25 +7,19 @@ struct list_hook{
 
 namespace srpg{
 
-class Operation{
-public:
-
-protected:
-	list_hook<Operation> _hook;
-	size_t _type;
-
-	Operation() : _type(0);
-};
-
 struct operation{
 	int type;
 };
 
-template<class T, class Archive>
-inline T* new_and_serialize(Archive& ar, const unsigned int version){
-	auto ret = new T();
+template<class T, class Archive, class U>
+inline std:enable_if<Archive::load_tag>::type new_and_serialize(Archive& ar, U*& p, const unsigned int version){
+	T* ret = new T();
+	p = ret;
 	ret->serialize(ar, version);
-	return ret;
+}
+template<class T, class Archive, class U>
+inline std:enable_if<Archive::save_tag>::type new_and_serialize(Archive& ar, U*& p, const unsigned int version){
+	reinterpret_cast<T*>(p)->serialize(ar, version);
 }
 
 template<class Archive>
@@ -33,9 +27,9 @@ void serialize(Archive& ar, operation*& op, const unsigned int version){
 	int type;
 	ar & type;
 	switch(type){
-	case op_move: op = new_and_serialize<op_move>(ar, version); break;
+	case op_move: new_and_serialize<op_move>(ar, op, version); break;
+	case op_change_facing: new_and_serialize<op_change_facing>(ar, op, version); break;
 	}
-	op->type = type;
 }
 
 #define _RR_DF_FIELD_DECL(type, name) type name;
