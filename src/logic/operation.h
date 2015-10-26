@@ -7,10 +7,6 @@ struct list_hook{
 
 namespace srpg{
 
-struct operation{
-	int type;
-};
-
 template<class T, class Archive, class U>
 inline std:enable_if<Archive::load_tag>::type new_and_serialize(Archive& ar, U*& p, const unsigned int version){
 	T* ret = new T();
@@ -45,16 +41,33 @@ void serialize(Archive& ar, operation*& op, const unsigned int version){
 		BOOST_PP_SEQ_FOR_EACH_I(_RR_DF_FIELD_DECL_IT, _, decls)\
 	}
 
+class operation{
+protected:
+	unsigned int ref_cnt_;
+	int type;
+public:
+	enum Type{
+		op_turn_end,
+		op_move,
+		op_change_facing,
+	};
+
+public:
+	virtual ~operation(){};
+	int get_type() const { return type; }
+};
+struct op_turn_end : operation{
+	op_turn_end() : type(Type::op_turn_end){}
+};
 struct op_move : operation{
+	op_move() : type(Type::op_move){}
 	RR_DEFINE_SERIALIZABLE_FIELDS(
-		(int, entity_id)
-		(vector<int>, path)
-	)
-	// TODO: create
+		(vector<int>, path))
 };
 struct op_change_facing : operation{
-	int entity_id;
-	int value;
+	op_change_facing() : type(Type::op_change_facing){}
+	RR_DEFINE_SERIALIZABLE_FIELDS(
+		(int, value))
 };
 
 } // end namespace srpg

@@ -1,8 +1,19 @@
 #pragma once
 
-struct entity{
+#include "utils/using.h"
+
+namespace srpg{
+
+class game_table;
+class unit_data;
+class vertex;
+
+class entity{
+	friend game_table;
+
+public:
 	int id;
-	map* map;
+	game_table* gt;
 	shared_ptr<unit_data> data;
 
 	int type;
@@ -15,3 +26,5 @@ struct entity{
 	int facing;
 	int standby_type_id;
 };
+
+}
