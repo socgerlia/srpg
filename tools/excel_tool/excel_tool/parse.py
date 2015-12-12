@@ -1,5 +1,5 @@
 def eat_blank(s, i):
-	while i < len(s) and s[i].is_blank():
+	while i < len(s) and s[i].isspace():
 		i += 1
 	return i
 
@@ -12,7 +12,7 @@ def parse_list(s, end, i):
 	elif s[i] == '{':
 		item, i = parse_list(s, '}', i + 1)
 		ret.append(tuple(item))
-	else
+	else:
 		raise
 	return ret, i
 
@@ -68,22 +68,64 @@ def erlang_to_python(s):
 	lst.append(s[b:i])
 	return ''.join(lst)
 
+class Type(object):
+	pass
+
 class Int(Type):
 	def __init__(self, length=32):
 		self.length = length
 	def check(self, ck):
 		# TODO: check whether type is Int, and Int length
 		return Type.check(self, ck)
-	def convert(self, s, i, toplevel):
+	def convert_toplevel(self, s):
+		try:
+			ret = int(float(s))
+			return ret
+		except:
+			pass
+	def convert(self, s, i):
 		i = eat_blank(s, i)
 		if i >= len(s):
 			raise
 		b = i
 		if s[i] == '-':
 			i += 1
-		while i < len(s) and s[i] in '0123456789':
+		while i < len(s) and s[i] in '0123456789.':
+			i += 1
+		try:
+			ret = int(float(s[b:i]))
+			return ret, i
+		except:
 			pass
-		return int(s[b:i]), i
+
+class String(Type):
+	def check(self, ck):
+		return Type.check(self, ck)
+	def convert_toplevel(self, s):
+		return s
+	def convert(self, s, i):
+		i = eat_blank(s, i)
+		if i >= len(s):
+			raise		
+		end = s[i]
+		if end not in '\'\"':
+			raise		
+		i += 1
+		b = i
+		while True:
+			if i >= len(s):
+				raise
+			elif s[i] == end:
+				i += 1
+				break
+			elif s[i] == '\\':
+				i += 1
+				if i >= len(s):
+					raise
+				i += 1
+			else:
+				i += 1
+		return s[b:i-1], i
 
 class List(Type):
 	def __init__(self, t):
@@ -94,7 +136,13 @@ class List(Type):
 			if not ck.push_check_pop(self.t, item):
 				return False
 		return Type.check(self, ck) # TODO: check self constraints
-	def convert(self, s, i, toplevel):
+	def convert_toplevel(self, s):
+		ret, i = self.convert(s, 0)
+		i = eat_blank(s, i)
+		if i < len(s):
+			raise
+		return ret
+	def convert(self, s, i):
 		i = eat_blank(s, i)
 		if i >= len(s):
 			raise
@@ -103,7 +151,7 @@ class List(Type):
 		i += 1
 		ret = []
 		while True:
-			value, i = self.t.convert(s, i, False)
+			value, i = self.t.convert(s, i)
 			ret.append(value)
 			i = eat_blank(s, i)
 			if i >= len(s):
@@ -127,7 +175,13 @@ class Tuple(Type):
 			if not ck.push_check_pop(self.types[i], value[i]):
 				return False
 		return Type.check(self, ck) # TODO: check self constraints
-	def convert(self, s, i, toplevel):
+	def convert_toplevel(self, s):
+		ret, i = self.convert(s, 0)
+		i = eat_blank(s, i)
+		if i < len(s):
+			raise
+		return ret
+	def convert(self, s, i):
 		i = eat_blank(s, i)
 		if i >= len(s):
 			raise
@@ -141,7 +195,7 @@ class Tuple(Type):
 				if s[i] != ',':
 					raise
 				i += 1
-			value, i = self.types[j].convert(s, i, False)
+			value, i = self.types[j].convert(s, i)
 			ret.append(value)
 		i = eat_blank(s, i)
 		if i >= len(s):
@@ -152,6 +206,4 @@ class Tuple(Type):
 		return tuple(ret), i
 
 
-
-
-
+value = Tuple(Int(), List(Int()), String()).convert_toplevel("  {12, [12, 12, -23, -34.01 ], \"-34.01\nasd\" }  ")
