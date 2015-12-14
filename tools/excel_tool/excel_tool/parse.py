@@ -1,3 +1,14 @@
+def make_record(record):
+	return { field.tag: field.text for field in record }
+def all_record(root):
+	for record in root:
+		yield make_record(record)
+def load_data(tpl_name):
+	from xml.etree.cElementTree import ElementTree
+	t = ElementTree(file = tpl_name + ".xml")
+	root = t.getroot()
+	return [record for record in all_record(root)]
+
 def eat_blank(s, i):
 	while i < len(s) and s[i].isspace():
 		i += 1
@@ -69,20 +80,50 @@ def erlang_to_python(s):
 	return ''.join(lst)
 
 class Type(object):
-	pass
+	def __init__(self):
+		self.constraint = None
+	# def __pos__(self):
+	# 	return List(self)
+	def __getitem__(self, i):
+		if not self.constraint:
+			self.constraint = i
+		else:
+			self.constraint = AndConstraint(self.constraint, i)
+		return self
+	def check(self, ck):
+		return constraint.check(ck)
+
+class Bool(Type):
+	def convert_toplevel(self, s):
+		try:
+			ret = int(s)
+			if ret == 0:
+				return False
+			elif ret == 1:
+				return True
+			else:
+				raise
+		except:
+			raise
+	def convert(self, s, i):
+		i = eat_blank(s, i)
+		if i >= len(s):
+			raise
+		if s[i] == '0':
+			return False, i+1
+		elif s[i] == '1':
+			return True, i+1
+		else:
+			raise
 
 class Int(Type):
 	def __init__(self, length=32):
 		self.length = length
-	def check(self, ck):
-		# TODO: check whether type is Int, and Int length
-		return Type.check(self, ck)
 	def convert_toplevel(self, s):
 		try:
-			ret = int(float(s))
-			return ret
+			return int(float(s))
 		except:
-			pass
+			raise
 	def convert(self, s, i):
 		i = eat_blank(s, i)
 		if i >= len(s):
@@ -93,14 +134,31 @@ class Int(Type):
 		while i < len(s) and s[i] in '0123456789.':
 			i += 1
 		try:
-			ret = int(float(s[b:i]))
-			return ret, i
+			return int(float(s[b:i])), i
 		except:
-			pass
+			raise
+
+class Float(Type):
+	def convert_toplevel(self, s):
+		try:
+			return float(s)
+		except:
+			raise
+	def convert(self, s, i):
+		i = eat_blank(s, i)
+		if i >= len(s):
+			raise
+		b = i
+		if s[i] == '-':
+			i += 1
+		while i < len(s) and s[i] in '0123456789.':
+			i += 1
+		try:
+			return float(s[b:i]), i
+		except:
+			raise
 
 class String(Type):
-	def check(self, ck):
-		return Type.check(self, ck)
 	def convert_toplevel(self, s):
 		return s
 	def convert(self, s, i):
@@ -128,12 +186,12 @@ class String(Type):
 		return s[b:i-1], i
 
 class List(Type):
-	def __init__(self, t):
-		self.t = t
+	def __init__(self, type):
+		self.type = type
 	def check(self, ck):
 		# TODO: test value is an array
 		for item in ck.value():
-			if not ck.push_check_pop(self.t, item):
+			if not ck.push_check_pop(self.type, item):
 				return False
 		return Type.check(self, ck) # TODO: check self constraints
 	def convert_toplevel(self, s):
@@ -151,7 +209,7 @@ class List(Type):
 		i += 1
 		ret = []
 		while True:
-			value, i = self.t.convert(s, i)
+			value, i = self.type.convert(s, i)
 			ret.append(value)
 			i = eat_blank(s, i)
 			if i >= len(s):
