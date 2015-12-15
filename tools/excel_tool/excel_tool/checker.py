@@ -4,8 +4,8 @@ class TplTrait(object):
 		self.fields = fields # { field_name: type, ... }
 
 class TplInfo(object):
-	def __init__(self, traits):
-		self.traits = traits
+	def __init__(self, trait):
+		self.trait = trait
 		self.data = None
 
 class CheckerStackElement(object):
@@ -14,18 +14,27 @@ class CheckerStackElement(object):
 		self.value = value
 
 class Checker(object):
-	def __init__(self):
+	def __init__(self, loader_class):
+		self.loader_class = loader_class
 		self.tpls = {} # { tpl_name: TplInfo, ... }
 		self.tpl_name = ""
 		self.field_name = ""
 		self.stack = []
 
+	def define_tpl(self, tpl_name, **fields):
+		# check if all values are instances of Type
+		for field_name, field_type in fields.iteritems():
+			if not isinstance(field_type, Type):
+				raise Exception('the value of field "{0}" is not a Type, in tpl "{1}"'.format(field_name, tpl_name))
+		# TODO: copy Type
+		self.tpls[tpl_name] = TplInfo(TplTrait(tpl_name, **fields))
+
 	def get_tpl(self, tpl_name):
-		if tpl_name not in self.tpls:
-			raise
-		info = self.tpls[tpl_name]
-		if info.data == None:
-			info.data = load_data(tpl_name) # TODO: load it
+		info = self.tpls.get(tpl_name)
+		if not info:
+			raise Exception('tpl {0} is not defined'.format(tpl_name))
+		elif not info.data == None:
+			info.data = self.loader_class(info.trait).load(tpl_name)
 		return info
 
 	def push(self, type, value):
@@ -54,7 +63,7 @@ class Checker(object):
 		for record in info.data:
 			self.push(None, record)
 			for field_name, field_value in record.iteritems():
-				field_type = info.traits.fields.get(field_name)
+				field_type = info.trait.fields.get(field_name)
 				if field_type != None:
 					self.field_name = field_name
 					result = self.push_check_pop(field_type, field_value)
