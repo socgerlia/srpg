@@ -19,6 +19,11 @@ class Type(object):
 		else:
 			self.constraint = i
 		return self
+	def clone(self):
+		ret = copy.copy(self)
+		if self.constraint:
+			ret.constraint = self.constraint.clone()
+		return ret
 	def check(self, ck):
 		if self.constraint:
 			return self.constraint.check(ck)
@@ -120,9 +125,13 @@ class StringType(Type):
 class List(Type):
 	def __init__(self, type):
 		self.type = type
+	def clone(self):
+		ret = Type.clone(self)
+		ret.type = self.type.clone()
+		return ret
 	def check(self, ck):
 		# TODO: test value is an array
-		for item in ck.value():
+		for item in ck.get().value:
 			if not ck.push_check_pop(self.type, item):
 				return False
 		return Type.check(self, ck) # TODO: check self constraints
@@ -161,8 +170,12 @@ class Tuple(Type):
 		if len(types) == 0:
 			raise Exception("tuple size cannot be 0")
 		self.types = types
+	def clone(self):
+		ret = Type.clone(self)
+		ret.types = [t.clone() for t in self.types]
+		return ret
 	def check(self, ck):
-		value = ck.value() # TODO: test value is a tuple, and size is matched
+		value = ck.get().value
 		for i in xrange(len(self.types)):
 			if not ck.push_check_pop(self.types[i], value[i]):
 				return False

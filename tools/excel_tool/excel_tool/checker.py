@@ -26,14 +26,15 @@ class Checker(object):
 		for field_name, field_type in fields.iteritems():
 			if not isinstance(field_type, Type):
 				raise Exception('the value of field "{0}" is not a Type, in tpl "{1}"'.format(field_name, tpl_name))
-		# TODO: copy Type
+		# clone types
+		fields = { field_name: field_type.clone() for field_name, field_type in fields.iteritems() }
 		self.tpls[tpl_name] = TplInfo(TplTrait(tpl_name, **fields))
 
 	def get_tpl(self, tpl_name):
 		info = self.tpls.get(tpl_name)
 		if not info:
 			raise Exception('tpl {0} is not defined'.format(tpl_name))
-		elif not info.data == None:
+		elif not info.data:
 			info.data = self.loader_class(info.trait).load(tpl_name)
 		return info
 
@@ -49,11 +50,8 @@ class Checker(object):
 		self.pop()
 		return ret
 
-	def type(self, index=-1):
-		return self.stack[index].type
-
-	def value(self, index=-1):
-		return self.stack[index].value
+	def get(self, index=-1):
+		return self.stack[index]
 
 	def check_tpl(self, tpl_name):
 		self.tpl_name = tpl_name
@@ -64,7 +62,7 @@ class Checker(object):
 			self.push(None, record)
 			for field_name, field_value in record.iteritems():
 				field_type = info.trait.fields.get(field_name)
-				if field_type != None:
+				if field_type:
 					self.field_name = field_name
 					result = self.push_check_pop(field_type, field_value)
 					# TODO: handle result
