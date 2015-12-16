@@ -10,7 +10,7 @@ class Constraint(object):
 	def clone(self):
 		return copy.deepcopy(self)
 	def check(self, ck):
-		return true
+		pass
 
 class AndConstraint(Constraint):
 	def __init__(self, lhs, rhs):
@@ -19,7 +19,8 @@ class AndConstraint(Constraint):
 	def clone(self):
 		return self.__class__(self.lhs.clone(), self.rhs.clone())
 	def check(self, ck):
-		return self.lhs.check(ck) and self.rhs.check(ck)
+		self.lhs.check(ck)
+		self.rhs.check(ck)
 
 class OrConstraint(Constraint):
 	def __init__(self, lhs, rhs):
@@ -28,7 +29,10 @@ class OrConstraint(Constraint):
 	def clone(self):
 		return self.__class__(self.lhs.clone(), self.rhs.clone())
 	def check(self, ck):
-		return self.lhs.check(ck) or self.rhs.check(ck)
+		try:
+			self.lhs.check(ck)
+		except Exception as e:
+			self.rhs.check(ck)
 
 class NotConstraint(Constraint):
 	def __init__(self, inner):
@@ -36,17 +40,22 @@ class NotConstraint(Constraint):
 	def clone(self):
 		return self.__class__(self.inner.clone())
 	def check(self, ck):
-		return not self.inner(ck)
+		try:
+			self.inner.check(ck)
+		except Exception as e:
+			pass
+		else:
+			raise Exception(self)
 
 # 
 class Foreign(Constraint):
 	tpl_map = {} # { tpl_name: { field_name: { field_value, ... }, ... }, ... }
 	@staticmethod
 	def get_field_value_set(ck, tpl_name, field_name):
-		data_map = tpl_map.get(tpl_name)
+		data_map = Foreign.tpl_map.get(tpl_name)
 		if not data_map:
 			data_map = {}
-			tpl_map[tpl_name] = data_map
+			Foreign.tpl_map[tpl_name] = data_map
 
 		field_value_set = data_map.get(field_name)
 		if not field_value_set:
@@ -57,7 +66,8 @@ class Foreign(Constraint):
 		self.tpl_name = tpl_name
 		self.field_name = field_name
 	def check(self, ck):
-		return ck.get().value in Foreign.get_field_value_set(ck, self.tpl_name, self.field_name)
+		if ck.get().value not in Foreign.get_field_value_set(ck, self.tpl_name, self.field_name):
+			raise Exception(self)
 
 class UniqueType(Constraint):
 	def __init__(self):
@@ -65,16 +75,14 @@ class UniqueType(Constraint):
 	def check(self, ck):
 		value = ck.get().value
 		if value in self.data:
-			return False # TODO: raise
+			raise Exception(self)
 		self.data.add(value)
-		return True
 
 class In(Constraint):
-	def __init__(self, value_set):
-		self.value_set = value_set
+	def __init__(self, *value_set):
+		self.value_set = set(value_set)
 	def check(self, ck):
-		return ck.get().value in self.value_set
-
-
+		if ck.get().value not in self.value_set:
+			raise Exception(self)
 
 Unique = UniqueType()

@@ -1,6 +1,9 @@
+from type2 import *
+from constraint import *
+
 class TplTrait(object):
-	def __init__(self, name, **fields):
-		self.name = name
+	def __init__(self, _tpl_name, **fields):
+		self.name = _tpl_name
 		self.fields = fields # { field_name: type, ... }
 
 class TplInfo(object):
@@ -14,14 +17,16 @@ class CheckerStackElement(object):
 		self.value = value
 
 class Checker(object):
-	def __init__(self, loader_class):
-		self.loader_class = loader_class
+	def __init__(self, loader):
+		self.loader = loader
 		self.tpls = {} # { tpl_name: TplInfo, ... }
 		self.tpl_name = ""
 		self.field_name = ""
 		self.stack = []
 
 	def define_tpl(self, tpl_name, **fields):
+		if "id" not in fields:
+			fields["id"] = Int[Unique]
 		# check if all values are instances of Type
 		for field_name, field_type in fields.iteritems():
 			if not isinstance(field_type, Type):
@@ -35,7 +40,7 @@ class Checker(object):
 		if not info:
 			raise Exception('tpl {0} is not defined'.format(tpl_name))
 		elif not info.data:
-			info.data = self.loader_class(info.trait).load(tpl_name)
+			info.data = self.loader(info.trait)
 		return info
 
 	def push(self, type, value):
@@ -46,7 +51,25 @@ class Checker(object):
 
 	def push_check_pop(self, type, value):
 		self.push(type, value)
-		ret = type.check(self)
+		try:
+			ret = type.check(self)
+		except Exception as e:
+			raise Exception("""
+constraint "{constraint}" fail:
+  tpl_name: {tpl_name}
+  field_name: {field_name}
+  id: {id}
+  stack:
+    {stack}
+""".format(
+	constraint = e.args[0].__class__,
+	tpl_name = self.tpl_name,
+	field_name = self.field_name,
+	id = self.get(1).value["id"],
+	stack = "\n    ".join([str((i, self.get(i).value)) for i in xrange(1, len(self.stack))])
+))
+			from sys import exit
+			exit()
 		self.pop()
 		return ret
 
