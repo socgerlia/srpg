@@ -1,8 +1,8 @@
 set(BIN srpg)
 
 # define
-set(BOOST_ROOT /Users/socgerlia/Desktop/work/common/boost)
-set(CRYPTOPP_ROOT /Users/socgerlia/Desktop/work/common/cryptopp)
+set(BOOST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../common/boost)
+set(CRYPTOPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../common/cryptopp)
 
 # compile flag
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
@@ -26,4 +26,4 @@ link_directories(${CRYPTOPP_ROOT}/cryptopp)
 
 add_executable(${BIN} main.cpp ${SRC_LIST})
 
-target_link_libraries(${BIN} boost_serialization cryptopp)
+target_link_libraries(${BIN} "-Wl,--whole-archive" boost_serialization "-Wl,--no-whole-archive" cryptopp)
