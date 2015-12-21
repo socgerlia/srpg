@@ -15,7 +15,7 @@ inline std:enable_if<Archive::load_tag>::type new_and_serialize(Archive& ar, U*&
 }
 template<class T, class Archive, class U>
 inline std:enable_if<Archive::save_tag>::type new_and_serialize(Archive& ar, U*& p, const unsigned int version){
-	reinterpret_cast<T*>(p)->serialize(ar, version);
+	static_cast<T*>(p)->serialize(ar, version);
 }
 
 template<class Archive>

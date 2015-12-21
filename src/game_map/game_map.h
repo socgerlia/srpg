@@ -5,39 +5,6 @@
 
 namespace srpg{
 
-struct vertex_data_tpl{
-	int top;
-	int bottom;
-	int terrain_id;
-};
-
-struct vertex_data : vertex_data_tpl{
-	int id;
-	index2 index;
-};
-
-struct vertex_group_data_tpl{
-	boost::multi_array<vertex_data, 2> data;
-};
-
-struct vertex_group_data : vertex_group_data_tpl{
-	int id;
-};
-
-struct game_map_area{
-	boost::multi_array<vertex_data, 2> data;
-};
-
-class game_map_data{
-	typedef vec<2, int> index2;
-
-	index2 max_dimension;
-	std::map<int, game_map_area> areas;
-
-	int add_area();
-	void remove_area(int id);
-};
-
 class game_map{
 public:
 	typedef vec<2, int> index_type;
