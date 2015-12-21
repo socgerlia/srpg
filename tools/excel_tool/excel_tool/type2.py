@@ -10,15 +10,20 @@ class Type(object):
 		self.constraint = None
 	# def __pos__(self):
 	# 	return List(self)
-	def __getitem__(self, i):
+	def __getitem__(self, c):
 		ret = copy.copy(self)
-		return ret._and_constraint(i)
+		return ret._and_constraint(c)
 	def _and_constraint(self, c):
 		if self.constraint:
-			self.constraint = AndConstraint(self.constraint, i)
+			self.constraint = AndConstraint(self.constraint, c)
 		else:
-			self.constraint = i
+			self.constraint = c
 		return self
+	def clone(self):
+		ret = copy.copy(self)
+		if self.constraint:
+			ret.constraint = self.constraint.clone()
+		return ret
 	def check(self, ck):
 		if self.constraint:
 			return self.constraint.check(ck)
@@ -50,6 +55,7 @@ class BoolType(Type):
 
 class IntType(Type):
 	def __init__(self, length=32):
+		Type.__init__(self)
 		self.length = length
 	def convert_toplevel(self, s):
 		try:
@@ -119,10 +125,15 @@ class StringType(Type):
 
 class List(Type):
 	def __init__(self, type):
+		Type.__init__(self)
 		self.type = type
+	def clone(self):
+		ret = Type.clone(self)
+		ret.type = self.type.clone()
+		return ret
 	def check(self, ck):
 		# TODO: test value is an array
-		for item in ck.value():
+		for item in ck.get().value:
 			if not ck.push_check_pop(self.type, item):
 				return False
 		return Type.check(self, ck) # TODO: check self constraints
@@ -160,9 +171,14 @@ class Tuple(Type):
 	def __init__(self, *types):
 		if len(types) == 0:
 			raise Exception("tuple size cannot be 0")
+		Type.__init__(self)
 		self.types = types
+	def clone(self):
+		ret = Type.clone(self)
+		ret.types = [t.clone() for t in self.types]
+		return ret
 	def check(self, ck):
-		value = ck.value() # TODO: test value is a tuple, and size is matched
+		value = ck.get().value
 		for i in xrange(len(self.types)):
 			if not ck.push_check_pop(self.types[i], value[i]):
 				return False
