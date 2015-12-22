@@ -26,4 +26,10 @@ link_directories(${CRYPTOPP_ROOT}/cryptopp)
 
 add_executable(${BIN} main.cpp ${SRC_LIST})
 
-target_link_libraries(${BIN} "-Wl,--whole-archive" boost_serialization "-Wl,--no-whole-archive" cryptopp)
+set(STATIC_LIBRARIES boost_serialization)
+set(DYNAMIC_LIBRARIES cryptopp)
+set(LINK_COMMAND "-Wl,-Bstatic" ${STATIC_LIBRARIES} "-Wl,-Bdynamic" ${DYNAMIC_LIBRARIES})
+
+#target_link_libraries(${BIN} "-Wl,--whole-archive" boost_serialization "-Wl,--no-whole-archive" cryptopp)
+target_link_libraries(${BIN} ${LINK_COMMAND})
+
