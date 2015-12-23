@@ -25,12 +25,13 @@ endforeach(f)
 
 link_directories(${BOOST_ROOT}/stage/lib)
 link_directories(${CRYPTOPP_ROOT}/cryptopp)
+link_directories(${CPP_NETLIB}/build/libs/network/src)
 
 add_executable(${BIN} main.cpp ${SRC_LIST})
 
 # libraries
 set(STATIC_LIBRARIES boost_serialization boost_thread boost_system)
-set(DYNAMIC_LIBRARIES cryptopp)
+set(DYNAMIC_LIBRARIES cryptopp pthread cppnetlib-client-connections cppnetlib-uri ssl crypto)
 if(APPLE OR NOT UNIX)
 	set(LINK_COMMAND ${STATIC_LIBRARIES} ${DYNAMIC_LIBRARIES})
 else()
