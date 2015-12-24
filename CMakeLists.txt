@@ -26,6 +26,9 @@ endforeach(f)
 link_directories(${BOOST_ROOT}/stage/lib)
 link_directories(${CRYPTOPP_ROOT}/cryptopp)
 link_directories(${CPP_NETLIB}/build/libs/network/src)
+if(APPLE)
+	link_directories(/usr/local/Cellar/openssl/1.0.2a-1/lib) # TODO: be variable
+endif()
 
 add_executable(${BIN} main.cpp ${SRC_LIST})
 
